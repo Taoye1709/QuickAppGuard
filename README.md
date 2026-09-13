@@ -1,0 +1,160 @@
+# 净屏守护 QuickAppGuard
+
+给老人机的轻量守护者：**识别并停用安卓系统中的快应用框架**，掐断"全屏广告一点就装、关都关不掉"的骚扰链条，同时锁定"未知来源安装"防止诱导下载。
+
+## 定位与边界（先读这段）
+
+这是一个**防骚扰/防诱导**工具，不是破解工具。合法性建立在四条红线上，均可在代码中审计：
+
+1. **只操作机主自己授权过的设备** —— 处置动作走 Device Owner / Shizuku 通道，两条通道都必须由机主本人通过 ADB 或无线调试显式授权，应用自身没有任何提权行为；在家人（尤其是老人）的设备上操作前，请征得本人同意并说明功能范围，这既是伦理要求也让保护真正可持续；
+2. **零数据收集** —— Manifest 故意不申请 `INTERNET` 权限（`scripts/check_consistency.py` 会把申请联网权限判为合规违规），所有检测和拦截记录只存在本机 SharedPreferences；
+3. **全程可逆** —— 每一次停用都有对应的一键恢复，UI 常驻"恢复"按钮；Device Owner 隐藏状态与设备管理员绑定，卸载前先在系统设置移除本应用的设备管理员身份，被隐藏的引擎会随之自动恢复可见；
+4. **最小动作面** —— 只处理快应用引擎（特征库 + 启发式命中项），与系统应用耦合的组件（华为/荣耀应用市场）只做官方开关引导，绝不动手，无障碍兜底也绝不拦截耦合组件的任何窗口。
+
+关于包可见性权限的一个明确取舍：应用申请了 `QUERY_ALL_PACKAGES` 用于检测第 3 级（深度包名扫描）。这个权限被 Google Play 严格限制，但本项目定位就是"不上商店、家人侧载"，**识别能力优先于上架可能**。如果未来决定上架，删除该权限与 `Detector.suspiciousByPackageName()` 即可，前两级检测不受影响。
+
+## 工作原理
+
+```
+┌ 检测（三级，逐级兜底）──────────────────────────┐
+│ ① 特征库精确匹配（com.miui.hybrid 等，含置信度） │
+│ ② hap:// scheme 启发式（捕获未收录引擎）         │
+│ ③ 深度包名扫描 hybrid/quickapp/qapp/hapjs        │
+└──────────────┬─────────────────────────────────┘
+               ▼
+┌ 处置（二选一，自动择优）─────────────────────────┐
+│ ① Device Owner（推荐）：setApplicationHidden    │
+│    重启不失效，且可锁定 DISALLOW_INSTALL_       │
+│    UNKNOWN_SOURCES 防一点就装                   │
+│ ② Shizuku：pm disable-user --user 0 <pkg>      │
+└──────────────┬─────────────────────────────────┘
+               ▼
+┌ 复查（对抗 OTA 装回）───────────────────────────┐
+│ 开机广播 + 12 小时非精确闹钟（系统原生，零依赖）  │
+└──────────────┬─────────────────────────────────┘
+               ▼
+┌ 兜底（未授权的机器）────────────────────────────┐
+│ 无障碍服务：快应用窗口弹出瞬间按回桌面           │
+│ 不读屏幕内容，只看来源包名，3 秒节流            │
+└────────────────────────────────────────────────┘
+```
+
+## 资源占用设计
+
+- **无网络**：无 INTERNET 权限，天然零流量；
+- **无常驻**：无前台服务；无障碍服务只订阅窗口切换事件、不读内容；
+- **零重依赖**：不用 WorkManager（省掉其 SQLite 调度栈），定时复查用系统 AlarmManager 非精确闹钟；
+- **体积**：release 开 minify + resource shrink，目标 APK < 2MB。
+
+## 激活向导（子女代做，一次性）
+
+**路线 A：Device Owner（推荐，重启不失效）**
+
+1. 手机：设置 → 关于手机 → 连点"版本号"7 次开开发者选项 → 打开"USB 调试"；
+2. 手机退出所有账号（设置 → 账号）——系统对激活 Device Owner 的硬性要求；
+3. 电脑执行：
+   ```bash
+   adb shell dpm set-device-owner com.qaguard/.admin.GuardAdminReceiver
+   ```
+4. 回到 App，状态变绿即成功。之后可重新登录原账号，日常使用不受影响。
+
+**路线 B：Shizuku（不便连电脑时）**
+
+1. 手机安装 [Shizuku](https://shizuku.rikka.app/)，按其指引开"无线调试"启动；
+2. 打开净屏守护，点「检查并保护」，在 Shizuku 弹窗中授权。
+
+**路线 C：什么都不装（应急止血）**
+
+```bash
+bash scripts/quick-guard.sh   # adb 直连，一次性停用已知引擎
+```
+
+## 从源码构建
+
+```bash
+gradle :app:assembleDebug      # 需要 JDK 17 + Android SDK 34
+gradle :app:testDebugUnitTest  # 特征库/判定逻辑单测
+python3 scripts/check_consistency.py  # 静态一致性校验
+```
+
+推送后 CI（GitHub Actions）自动完成：debug 构建 → 单测 → release 混淆构建，并在 Artifacts 输出 APK。
+
+## 真机验证清单（特征库共建）
+
+特征库带 `verified` 置信度标记，未标实 confirm 的包名靠 `hap://` 启发式兜底。欢迎按机型回填：
+
+```bash
+adb shell pm list packages | grep -iE 'hybrid|hap|quick'
+```
+
+| 厂商 | 引擎包名 | 置信度 | 耦合 |
+|------|----------|--------|------|
+| 小米 | `com.miui.hybrid` / `com.miui.hybrid.accessory` | 多方确认（HyperOS 上 disable 可能被拒，App 会自动退级为 suspend） | 否 |
+| OPPO 系 | `com.nearme.instant.platform`（[OPPO 开放平台文档](https://open.oppomobile.com/new/developmentDoc/info?id=11842)记载的内置引擎）；`com.oppo.hybrid`/`com.oplus.hybrid` 为社区候选待实测 | 多方确认 | 否 |
+| vivo 系 | `com.vivo.hybrid`（[vivo 官方 Wiki](https://qapp-wiki.vivo.com.cn/20221109/04) 确认） | 官方确认 | 否 |
+| 华为/荣耀 | 内置于应用市场 `com.huawei.appmarket` / `com.hihonor.appmarket` | 多方确认 | **是，只走官方开关** |
+| 魅族/中兴/联想 | 候选包名，②③级启发式兜底 | 待实测 | 否 |
+
+## 对老人的实质影响（诚实论证）
+
+做"正确的事"优先于产品边界，逐条过老人真实使用场景后的结论与对策：
+
+| 潜在害处 | 真实程度 | 对策 |
+|----------|----------|------|
+| 正当服务的快应用入口打不开，老人误以为"手机坏了"，被引流到维修骗局 | 低频存在，但经查证需要精确表述：政务类确有官方快应用（[国家政务服务平台快应用](http://ex.chinadaily.com.cn/exchange/partners/82/rss/channel/cn/columns/snl9a7/stories/WS5fb609dca3101e7ce97307a1.html) 2020 年上线，含医保、公积金等便民服务）；正当快应用（[顺丰速运负一屏卡片](https://developer.huawei.com/consumer/cn/doc/quickApp-Guides/quickapp-introduction-0000001126786237) 等）均保留 App/小程序等替代渠道，社保卡的官方渠道清单（[示例](https://www.qzfz.gov.cn/wsbs/nrrh/202309/t20230925_2939249.htm)）均为 App/小程序/政务平台，主流缴费渠道（支付宝/微信/运营商 App）也不经快应用——**停用损失的是捷径而非服务本身**，但"点开无反应"仍可能引发误读 | 首次保护生效后弹一次大字知情说明，明确"打不开是保护在起作用"；列表里每个引擎都写明状态；一键恢复常驻主页 |
+| 误停非引擎应用（启发式/深度扫描假阳性） | 可能发生，对老人伤害最直接 | **识别面求全、处置面求稳**：自动停用与一键处置只作用于官方文档/多方确认过的引擎；疑似组件只展示、标注"待人工确认"，绝不动手 |
+| 锁定"未知来源安装"导致老人自己装正当应用受阻，被骗子远程"指导"关闭设置 | 双刃剑，但骗子剧本本来就是"教老人关安全设置"，本应用把入口从系统设置收到一个有大字说明的页面里，反而抬高了骗局的认知门槛 | 解锁开关就在主页；知情说明写明"装新应用先回来关一下"；不拦截 adb（子女可远程协助） |
+| 无障碍兜底误触正常操作 | 不成立：不读屏幕内容、只按来源包名匹配、明确排除耦合组件与拨号器等系统应用 | 3 秒节流 + HOME 而非 BACK（不给广告二次停留） |
+| 被停用引擎影响厂商系统功能 | 个别机型存在 | suspend 退级比 disable 更温和；恢复路径全程可逆 |
+
+一句话结论：**害处不来自"关掉快应用"，而来自"关掉了却不解释"和"关错了东西"**——本设计用知情说明压前者，用"仅处置已确认引擎"压后者。不设任何上报、监管、远程控制能力；老人（及其家人）始终拥有完整、无需解释的恢复权。
+
+## 白名单策略：能做什么，不能做什么
+
+“白名单”在快应用防护里有三种含义，可行性完全不同：
+
+1. **处置白名单（已实现）**：verified 特征库即白名单——自动停用与一键处置只作用于官方文档/多方确认过的引擎，疑似组件（启发式/未验证包名）只展示、绝不自动动手。
+2. **上下文白名单（已实现）**：无障碍兜底从"见快应用窗口就拦"升级为"只拦从其他应用里弹出的"。判断逻辑：前一个前台窗口是桌面（通过 `CATEGORY_HOME` 动态识别，不限品牌）、负一屏/助手（内置小米/OPPO 常见包名）或快应用生态自身界面（快应用中心）→ 视为用户主动使用，放行；从浏览器/小说/视频等应用中突然弹出 → 拦截。拦截后清空上下文，防止同一广告链的下一个窗口被误判为主动使用。**局限**：负一屏包名各厂商不一，未覆盖的品牌可能误拦负一屏卡片（有 Toast 提示，可关闭兜底开关）。
+3. **按快应用个体放行（技术不可行）**：快应用（rpk）运行在引擎窗口内，窗口身份只有引擎包名；无障碍拿不到"当前运行的是哪个 rpk"（除非抓取窗口内容猜标题，不可靠且违反不读内容的安全设计），Device Owner/shell 也没有 rpk 粒度的 API。**替代方案**：经查证，正当快应用（国家政务服务平台、顺丰速运等）均有官方 App/小程序，个别家庭确实依赖某个快应用时，引导改用其官方渠道即可，白名单需求自然消失。
+
+## 已知限制
+
+- **华为/荣耀**：快应用中心与应用市场耦合，包级禁用会破坏应用安装，本 App 对这两个品牌只做"官方开关引导"（应用市场 → 我的 → 设置 → 快应用管理），无障碍兜底也明确排除它们；
+- **启发式不保证 100%**：极少数引擎可能既不在特征库、又不注册 hap:// 浏览器协议、包名也不含关键词——"识别任何快应用框架"没有绝对保证，遇到漏网机型请用 `adb shell pm list packages` 回填特征库；
+- **OTA 打回**：厂商系统更新可能把引擎装回或重置，开机与定时复查会自动再停用；Device Owner 通道通常不受 OTA 影响；
+- **Shizuku 通道**：手机重启后 Shizuku 需重新启动才会恢复守护（Device Owner 通道无此问题，这也是它被列为推荐路线的原因）；
+- **低于 Android 7.0** 的机型：无 `setApplicationHidden` 能力，请使用路线 C 的 adb 脚本；
+- **HarmonyOS NEXT**（非兼容安卓的纯血鸿蒙）无法侧载 APK，不在保护范围内；
+- **卸载本应用**：先在系统"设备管理员"中移除净屏守护（隐藏的引擎会自动恢复），再正常卸载；
+- **分发**：这类工具不适合上架 Google Play（设备策略类 API 与 QUERY_ALL_PACKAGES 均有政策限制），建议 GitHub Releases + 自签名分发给家人。
+
+## 开源社区参考与致谢
+
+调研同类项目后借鉴了以下经验，全部已落入代码或写入路线图：
+
+**已借鉴进代码：**
+
+- [FxxkMIUIAd](https://github.com/qhy040404/FxxkMIUIAd) —— 关键贡献：实测发现部分 HyperOS 机型把引擎标记为不可 disable，`pm suspend` 是最佳替代。本项目的两条处置通道都加入了"suspend 自动退级"，应急脚本同步；
+- [vivo 快应用官方 Wiki](https://qapp-wiki.vivo.com.cn/20221109/04) 与 [OPPO 开放平台文档](https://open.oppomobile.com/new/developmentDoc/info?id=11842) —— 用官方文档修正了特征库置信度（vivo 引擎 `com.vivo.hybrid` 官方确认；OPPO 真实内置引擎是 `com.nearme.instant.platform`，纠正了此前标错的候选名）；
+- [MIUI 社区禁用快应用帖](https://web.vip.miui.com/page/info/mio/mio/detail?app_version=dev.20051&postId=37959246)、[mcxiaoke 的 MIUI 精简清单](https://gist.github.com/mcxiaoke/ade05718f590bcd574b807c4706a00b1) —— "禁用优于卸载、可随时恢复"的社区共识与本项目可逆性红线一致，包名清单持续交叉核对；
+- 各品牌官方关闭入口（小米"撤回同意"、OPPO/vivo"连点版本号"停服）—— 已内置为特征库的 `officialToggle` 字段，作为零权限兜底路径展示在 UI。
+
+**路线图上值得借鉴的：**
+
+- [GKD](https://github.com/gkd-kit/gkd)（9k+ star）与 [SKIP](https://github.com/GuoXiCheng/SKIP) —— 无障碍规则引擎的成熟范式：高级选择器 + 社区订阅规则 + 快照审查。本项目的无障碍兜底目前是"按包名整窗拦截"，未来可引入"规则文件"形态精确匹配弹窗控件；
+- [Dhizuku](https://github.com/iamr0s/Dhizuku) —— Device Owner 权限代理共享，可让多个 app 复用一次激活，作为激活路线的补充选项；
+- [Hail](https://github.com/timschneeb/awesome-shizuku)（disable/hide/suspend 三模式冻结）—— 与本项目双通道 + suspend 退级的思路互相印证，其 Shizuku 集成实现可参考；
+- [MiuiCleaner](https://github.com/gucong3000/MiuiCleaner)、[CloseXiaomiAdvertising](https://github.com/ibaozi-cn/CloseXiaomiAdvertising)、[universal-android-debloater](https://github.com/0x192/universal-android-debloater) —— 厂商广告组件（如小米 `com.miui.systemAdSolution` 智能服务开屏广告）与各厂商精简清单的持续数据源。**注意**：广告组件超出"快应用"产品边界，若要扩展应作为独立的可选模块（默认关闭），不混入特征库。
+
+## 目录结构
+
+```
+app/src/main/java/com/qaguard/
+├── MainActivity.kt          # 老人友好单页：状态灯 + 大按钮 + 三个开关
+├── GuardApp.kt / Store.kt   # 入口与本机状态（无出网）
+├── detect/                  # 特征库、扫描器、判定（纯逻辑可单测）
+├── control/                 # DeviceOwner / Shizuku 双通道 + 通道择优
+├── monitor/                 # 开机复查、12h 闹钟复查、无障碍弹窗兜底
+├── admin/                   # DeviceAdminReceiver（仅 force-lock 策略）
+└── shizuku/                 # shell 命令执行用户服务（仅 pm 两条命令）
+```

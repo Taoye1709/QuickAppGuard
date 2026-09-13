@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 合规设计：故意不申请 INTERNET 权限——全部数据只留在本机，可被审计验证 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- 深度扫描用（检测第 3 级）：个人/家人侧载场景可接受；
+         若未来上架商店必须删除本权限，检测器会自然降级到前两级 -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
+    <!-- 包可见性：只声明特征库内的引擎包名 + hap:// 协议，不用 QUERY_ALL_PACKAGES -->
+    <queries>
+        <package android:name="com.miui.hybrid" />
+        <package android:name="com.miui.hybrid.accessory" />
+        <package android:name="com.nearme.instant.platform" />
+        <package android:name="com.oppo.hybrid" />
+        <package android:name="com.oplus.hybrid" />
+        <package android:name="com.nearme.hybrid" />
+        <package android:name="com.vivo.hybrid" />
+        <package android:name="com.bbk.hybrid" />
+        <package android:name="com.meizu.flyme.hybrid" />
+        <package android:name="com.zte.hybrid" />
+        <package android:name="com.zui.hybrid" />
+        <package android:name="com.huawei.appmarket" />
+        <package android:name="com.hihonor.appmarket" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="hap" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".GuardApp"
+        android:allowBackup="false"
+        android:icon="@drawable/ic_shield"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.Guard">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".admin.GuardAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".monitor.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name=".monitor.GuardA11yService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_config" />
+        </service>
+
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+    </application>
+</manifest>

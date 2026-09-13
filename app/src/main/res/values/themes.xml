@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Guard" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- 固定浅色配色（老人机高对比、大字），不用 DayNight 避免深色模式下半途配色失衡 -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorAccent">@color/primary</item>
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

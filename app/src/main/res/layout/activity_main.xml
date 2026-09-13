@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <View
+            android:id="@+id/view_status_dot"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="24dp"
+            android:background="@drawable/bg_status_dot" />
+
+        <TextView
+            android:id="@+id/tv_status_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:textColor="@color/text"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_status_sub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center"
+            android:textColor="@color/muted"
+            android:textSize="15sp" />
+
+        <Button
+            android:id="@+id/btn_scan"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:layout_marginTop="20dp"
+            android:text="@string/btn_scan"
+            android:textSize="18sp" />
+
+        <LinearLayout
+            android:id="@+id/ll_engines"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical" />
+
+        <TextView
+            android:id="@+id/tv_last_check"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="@color/muted"
+            android:textSize="13sp" />
+
+        <Switch
+            android:id="@+id/sw_auto"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:minHeight="48dp"
+            android:text="@string/sw_auto"
+            android:textSize="17sp" />
+
+        <Switch
+            android:id="@+id/sw_a11y"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="48dp"
+            android:text="@string/sw_a11y"
+            android:textSize="17sp" />
+
+        <Switch
+            android:id="@+id/sw_install_lock"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="48dp"
+            android:text="@string/sw_install_lock"
+            android:textSize="17sp" />
+
+        <TextView
+            android:id="@+id/tv_blocked"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="@color/muted"
+            android:textSize="14sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_restore"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:text="@string/btn_restore"
+                android:textSize="15sp" />
+
+            <Button
+                android:id="@+id/btn_setup"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="@string/btn_setup"
+                android:textSize="15sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_footer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="24dp"
+            android:lineSpacingExtra="4dp"
+            android:text="@string/privacy_note"
+            android:textColor="@color/muted"
+            android:textSize="13sp" />
+    </LinearLayout>
+</ScrollView>

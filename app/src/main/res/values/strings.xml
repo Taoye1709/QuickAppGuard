@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">净屏守护</string>
+
+    <string name="btn_scan">检查并保护</string>
+    <string name="btn_restore">恢复</string>
+    <string name="btn_setup">激活向导</string>
+
+    <string name="sw_auto">自动守护（发现即停用）</string>
+    <string name="sw_a11y">弹窗拦截（无障碍兜底）</string>
+    <string name="sw_install_lock">锁定“未知来源安装”（防一点就装）</string>
+
+    <string name="a11y_desc">检测到广告骚扰性质的快应用弹窗时自动回到桌面，保护老年用户不被诱导。从桌面、负一屏或快应用中心主动打开不受影响。本服务不读取屏幕内容，只根据窗口来源判断。</string>
+
+    <string name="privacy_note">本应用没有申请联网权限，所有检测与记录只保存在本机；不收集、不上传任何数据。所有操作只针对你主动授权过的设备，且可随时一键恢复。</string>
+</resources>
