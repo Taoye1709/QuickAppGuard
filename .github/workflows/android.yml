@@ -21,13 +21,30 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
+      - name: Prepare release signing keystore
+        env:
+          QA_KEYSTORE_B64: ${{ secrets.QA_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$QA_KEYSTORE_B64" ]; then
+            echo "$QA_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/qa-release.keystore"
+            echo "KEYSTORE_READY=true" >> "$GITHUB_ENV"
+            echo "签名密钥已就绪（PKCS12，专用 keystore）"
+          else
+            echo "KEYSTORE_READY=false" >> "$GITHUB_ENV"
+            echo "::warning::QA_KEYSTORE_B64 未配置，release 包将退回 debug 签名"
+          fi
+
       - name: Build APK
         run: gradle :app:assembleDebug --no-daemon
 
       - name: Unit tests
         run: gradle :app:testDebugUnitTest --no-daemon
 
-      - name: Release build (minify check)
+      - name: Release build (signed)
+        env:
+          QA_KEYSTORE_PATH: ${{ runner.temp }}/qa-release.keystore
+          QA_KEYSTORE_PASSWORD: ${{ secrets.QA_KEYSTORE_PASSWORD }}
+          QA_KEYSTORE_ALIAS: quickappguard
         run: gradle :app:assembleRelease --no-daemon
 
       - uses: actions/upload-artifact@v4

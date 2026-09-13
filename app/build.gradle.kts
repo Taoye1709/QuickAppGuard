@@ -1,3 +1,5 @@
+import java.io.File
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -11,8 +13,23 @@ android {
         applicationId = "com.qaguard"
         minSdk = 24
         targetSdk = 34
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
+    }
+
+    // v0.3 正式签名：CI 环境注入 QA_KEYSTORE_PATH/PASSWORD 时使用专用 keystore（PKCS12），
+    // 本地或未配置密钥时退回 debug 签名，保证任何环境都能构建
+    signingConfigs {
+        create("ci") {
+            val ksFile = System.getenv("QA_KEYSTORE_PATH")?.let { File(it) }?.takeIf { it.exists() }
+            if (ksFile != null) {
+                storeFile = ksFile
+                storeType = "PKCS12"
+                storePassword = System.getenv("QA_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("QA_KEYSTORE_ALIAS") ?: "quickappguard"
+                keyPassword = System.getenv("QA_KEYSTORE_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -23,9 +40,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // 个人/家人分发：先用 debug 密钥签名保证 APK 可直接安装（不可调试）。
-            // 正式自建 keystore + GitHub Secrets 的方案见 README「安装」
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig =
+                if (System.getenv("QA_KEYSTORE_PATH")?.let { File(it) }?.exists() == true) {
+                    signingConfigs.getByName("ci")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
         }
     }
 

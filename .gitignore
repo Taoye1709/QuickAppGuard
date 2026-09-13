@@ -10,3 +10,11 @@ captures/
 
 # 本机工具状态与会话数据（含本机路径与 session 信息），禁止入库
 .mimosa/
+
+# 签名材料与密码（密钥只存本机仓库外 + GitHub Secrets）
+*.pem
+*.p12
+*.keystore
+*.jks
+keystore-password.txt
+keystore.b64
