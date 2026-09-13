@@ -33,7 +33,11 @@ object InstallLock {
         if (!dpm.isDeviceOwnerApp(context.packageName)) {
             kotlin.Result.failure(IllegalStateException("需要 Device Owner 权限"))
         } else {
-            dpm.setUserRestriction(admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES, locked)
+            if (locked) {
+                dpm.addUserRestriction(admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES)
+            } else {
+                dpm.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES)
+            }
             kotlin.Result.success(Unit)
         }
     } catch (t: Throwable) {

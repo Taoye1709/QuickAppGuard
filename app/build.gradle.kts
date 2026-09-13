@@ -26,6 +26,11 @@ android {
         }
     }
 
+    buildFeatures {
+        // AGP 8 默认关闭 AIDL，Shizuku 用户服务接口需要它
+        aidl = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
