@@ -23,6 +23,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // 个人/家人分发：先用 debug 密钥签名保证 APK 可直接安装（不可调试）。
+            // 正式自建 keystore + GitHub Secrets 的方案见 README「安装」
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

@@ -67,6 +67,17 @@
 - **零重依赖**：不用 WorkManager（省掉其 SQLite 调度栈），定时复查用系统 AlarmManager 非精确闹钟；
 - **体积**：release 开 minify + resource shrink，目标 APK < 2MB。
 
+## 安装
+
+本应用**不上架任何应用商店**，只通过 GitHub Releases 分发 APK 侧载安装（原因见"定位与边界"最后一条）。
+
+1. 打开 [Releases 页面](https://github.com/Taoye1709/QuickAppGuard/releases)，下载最新版 APK（免登录直链）；
+2. 手机上点击安装，系统提示"未知来源应用"时允许本次安装（浏览器/文件管理器的"安装未知应用"权限需临时允许）；
+   - 注意：如果已开启本应用的「锁定未知来源安装」，需要先回主页关掉该开关再装新版本；
+3. （推荐）按"激活向导"完成 Device Owner 激活，之后升级版本也建议先临时解锁安装锁。
+
+**关于签名**：当前 release 包使用 debug 密钥签名（可正常安装、不可调试）。正式的自建 keystore + GitHub Secrets 出签名包是后续事项；更换签名后无法覆盖安装，需卸载重装（先移除设备管理员）。
+
 ## 激活向导（子女代做，一次性）
 
 **路线 A：Device Owner（推荐，重启不失效）**
