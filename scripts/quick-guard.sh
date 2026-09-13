@@ -7,6 +7,7 @@ set -euo pipefail
 PKGS=(
   com.miui.hybrid
   com.miui.hybrid.accessory
+  com.miui.systemAdSolution
   com.nearme.instant.platform
   com.oppo.hybrid
   com.oplus.hybrid

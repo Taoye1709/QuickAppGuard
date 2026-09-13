@@ -24,6 +24,7 @@ import com.qaguard.detect.EngineDatabase
 import com.qaguard.detect.Verdicts
 import com.qaguard.monitor.DailyGuard
 import com.qaguard.model.DetectedEngine
+import com.qaguard.model.EngineCategory
 import rikka.shizuku.Shizuku
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -50,9 +51,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var swAuto: Switch
     private lateinit var swA11y: Switch
     private lateinit var swInstallLock: Switch
+    private lateinit var swVendorAd: Switch
     private lateinit var llEngines: LinearLayout
     private lateinit var tvBlocked: TextView
     private lateinit var btnRestore: Button
+    private lateinit var btnCheckup: Button
     private lateinit var btnSetup: Button
 
     /** refresh() 程序化同步开关状态期间，屏蔽监听器，避免覆写用户偏好 */
@@ -70,14 +73,17 @@ class MainActivity : AppCompatActivity() {
         swAuto = findViewById(R.id.sw_auto)
         swA11y = findViewById(R.id.sw_a11y)
         swInstallLock = findViewById(R.id.sw_install_lock)
+        swVendorAd = findViewById(R.id.sw_vendor_ad)
         llEngines = findViewById(R.id.ll_engines)
         tvBlocked = findViewById(R.id.tv_blocked)
         btnRestore = findViewById(R.id.btn_restore)
+        btnCheckup = findViewById(R.id.btn_checkup)
         btnSetup = findViewById(R.id.btn_setup)
 
         btnScan.setOnClickListener { onScanClicked() }
         btnRestore.setOnClickListener { confirmRestore() }
         btnSetup.setOnClickListener { showSetup() }
+        btnCheckup.setOnClickListener { startActivity(Intent(this, CheckupActivity::class.java)) }
 
         swAuto.setOnCheckedChangeListener { _, checked ->
             if (uiSyncing) return@setOnCheckedChangeListener
@@ -90,6 +96,15 @@ class MainActivity : AppCompatActivity() {
         swInstallLock.setOnCheckedChangeListener { _, checked ->
             if (uiSyncing) return@setOnCheckedChangeListener
             onInstallLockToggled(checked)
+        }
+        swVendorAd.setOnCheckedChangeListener { _, checked ->
+            if (uiSyncing) return@setOnCheckedChangeListener
+            Store.vendorAdGuard = checked
+            Toast.makeText(
+                this,
+                if (checked) "已启用：广告组件将随自动守护一起停用" else "已关闭：广告组件恢复原状请用「恢复」",
+                Toast.LENGTH_SHORT
+            ).show()
         }
 
         // 保持复查闹钟新鲜（setInexactRepeating 幂等）
@@ -129,6 +144,7 @@ class MainActivity : AppCompatActivity() {
     private fun refresh() {
         uiSyncing = true
         val engines = detector.scan()
+        val adComponents = detector.scanAdComponents()
         val verdict = Verdicts.of(engines)
         val controllers = Controllers.all(this)
 
@@ -168,7 +184,7 @@ class MainActivity : AppCompatActivity() {
         tvSub.text = sub
         dot.backgroundTintList = ContextCompat.getColorStateList(this, color)
 
-        renderEngines(engines, controllers)
+        renderEngines(engines, adComponents, controllers)
 
         swAuto.isEnabled = controllers.isNotEmpty()
         swAuto.isChecked = controllers.isNotEmpty() && Store.autoProtect
@@ -182,6 +198,10 @@ class MainActivity : AppCompatActivity() {
             if (swInstallLock.isChecked != locked) swInstallLock.isChecked = locked
         }
 
+        // 广告组件开关：本机存在该类组件时才显示（默认关闭，实验性）
+        swVendorAd.visibility = if (adComponents.isEmpty()) View.GONE else View.VISIBLE
+        if (swVendorAd.isChecked != Store.vendorAdGuard) swVendorAd.isChecked = Store.vendorAdGuard
+
         tvBlocked.text = "无障碍弹窗拦截：累计 ${Store.blockedCount} 次"
         tvLastCheck.text = if (Store.lastCheckAt == 0L) {
             "上次复查：尚未运行"
@@ -194,13 +214,19 @@ class MainActivity : AppCompatActivity() {
     /** 特征库里已确认被任一通道停用的引擎数（含扫描不到的隐藏包，让状态页给出真实保护规模）。 */
     private fun countDeactivated(controllers: List<EngineController>): Int {
         if (controllers.isEmpty()) return 0
-        val pkgs = EngineDatabase.entries.filter { !it.coupled }.map { it.packageName }
+        val pkgs = EngineDatabase.entries
+            .filter { !it.coupled && (it.category == EngineCategory.QUICK_APP || Store.vendorAdGuard) }
+            .map { it.packageName }
         return pkgs.count { pkg -> controllers.any { it.isDeactivated(pkg) } }
     }
 
-    private fun renderEngines(engines: List<DetectedEngine>, controllers: List<EngineController>) {
+    private fun renderEngines(
+        engines: List<DetectedEngine>,
+        adComponents: List<DetectedEngine>,
+        controllers: List<EngineController>
+    ) {
         llEngines.removeAllViews()
-        if (engines.isEmpty()) {
+        if (engines.isEmpty() && adComponents.isEmpty()) {
             addEngineLine("未检测到快应用框架 ✓")
             return
         }
@@ -223,6 +249,20 @@ class MainActivity : AppCompatActivity() {
                 state.append("\n").append(entry.note)
             }
             addEngineLine(state.toString())
+        }
+        for (e in adComponents) {
+            val entry = e.entry
+            val handled = controllers.any { it.isDeactivated(e.packageName) }
+            val state = when {
+                handled -> "已停用 ✓"
+                Store.vendorAdGuard -> "运行中 ⚠"
+                else -> "未拦截（打开上方实验开关后自动处理）"
+            }
+            val line = StringBuilder("${entry?.vendor ?: "未知"}·广告组件\n${e.packageName} — $state")
+            if (!entry?.officialToggle.isNullOrEmpty()) {
+                line.append("\n官方关闭：").append(entry!!.officialToggle)
+            }
+            addEngineLine(line.toString())
         }
     }
 
@@ -252,7 +292,10 @@ class MainActivity : AppCompatActivity() {
         Thread {
             val controllers = Controllers.all(this)
             val all = detector.scan()
-            val targets = all.filter { it.entry?.verified == true && it.entry.coupled != true }
+            val targets = all
+                .filter { it.entry?.verified == true && it.entry.coupled != true }
+                .toMutableList()
+            if (Store.vendorAdGuard) targets += detector.scanAdComponents()
             val pending = all.count {
                 it.entry == null || (it.entry != null && !it.entry.verified && it.entry.coupled != true)
             }
@@ -276,7 +319,7 @@ class MainActivity : AppCompatActivity() {
                 val pendingHint = if (pending > 0) "；另有 $pending 个疑似组件待确认" else ""
                 val msg = when {
                     targets.isEmpty() ->
-                        if (pending > 0) "没有已确认的快应用引擎$pendingHint"
+                        if (pending > 0) "没有已确认的可处理对象$pendingHint"
                         else "本机没有快应用框架，无需处理"
                     done == 0 && fail == 0 -> "全部引擎已处于停用状态$pendingHint"
                     fail == 0 -> "本次停用 $done 个引擎$pendingHint"

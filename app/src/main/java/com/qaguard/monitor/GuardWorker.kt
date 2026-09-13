@@ -13,13 +13,15 @@ object GuardWorker {
         Store.initOnce(ctx)
         Store.lastCheckAt = System.currentTimeMillis()
 
-        val engines = Detector(ctx.packageManager, ctx.packageName).scan()
+        val detector = Detector(ctx.packageManager, ctx.packageName)
 
-        // 处置面求稳：只有官方/多方确认过的引擎才允许自动停用；
-        // 启发式与未验证条目只记录，等家人在界面上人工确认后再处置
-        val actionable = engines.filter {
-            it.entry?.verified == true && it.entry.coupled != true
-        }
+        // 处置面求稳：快应用只处理官方/多方确认过的引擎；
+        // 广告组件只在用户显式打开实验开关后纳入
+        val actionable = detector.scan()
+            .filter { it.entry?.verified == true && it.entry.coupled != true }
+            .toMutableList()
+        if (Store.vendorAdGuard) actionable += detector.scanAdComponents()
+
         if (actionable.isEmpty()) return
 
         // 自动守护关闭时只记录，不动手

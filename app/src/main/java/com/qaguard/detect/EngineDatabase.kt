@@ -1,5 +1,6 @@
 package com.qaguard.detect
 
+import com.qaguard.model.EngineCategory
 import com.qaguard.model.EngineEntry
 
 /**
@@ -48,6 +49,19 @@ object EngineDatabase {
         EngineEntry("com.meizu.flyme.hybrid", "魅族", coupled = false, verified = false, note = "Flyme 候选包名，待实测"),
         EngineEntry("com.zte.hybrid", "中兴/努比亚", coupled = false, verified = false, note = "候选包名，待实测"),
         EngineEntry("com.zui.hybrid", "联想", coupled = false, verified = false, note = "ZUI 候选包名，待实测"),
+
+        // —— 厂商广告投放组件（VENDOR_AD：默认不拦截，用户显式打开实验开关后才处置）——
+        EngineEntry(
+            "com.miui.systemAdSolution", "小米", coupled = false, verified = true,
+            note = "小米智能服务：系统开屏广告与推广弹窗的投放组件（FxxkMIUIAd 项目实测可停用）",
+            officialToggle = "设置 → 搜索“系统广告” → 关闭系统广告",
+            category = EngineCategory.VENDOR_AD
+        ),
+        EngineEntry(
+            "com.miui.msa.global", "小米", coupled = false, verified = false,
+            note = "小米国际版广告组件（用途待实测）",
+            category = EngineCategory.VENDOR_AD
+        ),
 
         // —— 耦合型：不包级禁用，只做官方开关引导 ——
         EngineEntry(

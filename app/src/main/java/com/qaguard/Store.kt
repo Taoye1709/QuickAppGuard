@@ -39,4 +39,9 @@ object Store {
     var informedShown: Boolean
         get() = p().getBoolean("informed_shown", false)
         set(v) = p().edit().putBoolean("informed_shown", v).apply()
+
+    /** 广告组件拦截（实验性）：厂商广告投放组件默认不拦截，用户显式打开后才纳入自动处置。 */
+    var vendorAdGuard: Boolean
+        get() = p().getBoolean("vendor_ad_guard", false)
+        set(v) = p().edit().putBoolean("vendor_ad_guard", v).apply()
 }

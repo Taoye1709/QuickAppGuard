@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import com.qaguard.model.DetectedEngine
+import com.qaguard.model.EngineCategory
 
 /**
  * 快应用框架检测器。三级策略，逐级兜底：
@@ -24,7 +25,8 @@ class Detector(
     fun scan(): List<DetectedEngine> {
         val found = LinkedHashMap<String, DetectedEngine>()
 
-        for (entry in EngineDatabase.entries) {
+        // 只扫描快应用类别；厂商广告组件由 scanAdComponents() 单独提供（开关独立）
+        for (entry in EngineDatabase.entries.filter { it.category == EngineCategory.QUICK_APP }) {
             if (isInstalled(entry.packageName)) {
                 found[entry.packageName] = DetectedEngine(entry, entry.packageName, byHeuristic = false)
             }
@@ -39,6 +41,18 @@ class Detector(
 
         return found.values.toList()
     }
+
+    /** 已安装的厂商广告投放组件（是否纳入处置由「广告组件拦截」开关决定）。 */
+    fun scanAdComponents(): List<DetectedEngine> =
+        EngineDatabase.entries
+            .filter { it.category == EngineCategory.VENDOR_AD }
+            .mapNotNull { entry ->
+                if (isInstalled(entry.packageName)) {
+                    DetectedEngine(entry, entry.packageName, byHeuristic = false)
+                } else {
+                    null
+                }
+            }
 
     private fun isInstalled(pkg: String): Boolean = try {
         pm.getPackageInfo(pkg, 0)

@@ -5,10 +5,21 @@
     <string name="btn_scan">检查并保护</string>
     <string name="btn_restore">恢复</string>
     <string name="btn_setup">激活向导</string>
+    <string name="btn_checkup">体检</string>
 
     <string name="sw_auto">自动守护（发现即停用）</string>
     <string name="sw_a11y">弹窗拦截（无障碍兜底）</string>
     <string name="sw_install_lock">锁定“未知来源安装”（防一点就装）</string>
+    <string name="sw_vendor_ad">拦截厂商广告组件（实验性，默认关）</string>
+
+    <string name="checkup_title">体检中心</string>
+    <string name="checkup_subtitle">这里集中了“不进自动处置管线、但能查能引导”的骚扰来源</string>
+    <string name="checkup_overlay_header">悬浮窗权限</string>
+    <string name="checkup_overlay_found">以下应用可以在任何界面（包括拨号界面）之上弹出窗口，是“盖住屏幕”类广告的来源。逐个确认：认识且需要就保留，不认识就点「去管理」关闭它的悬浮窗权限。</string>
+    <string name="checkup_overlay_clean">未发现持有悬浮窗权限的第三方应用，保持现状即可。</string>
+    <string name="checkup_manage">去管理</string>
+    <string name="checkup_notice_header">通知栏营销通知</string>
+    <string name="checkup_notice_body">系统不允许第三方应用代关其他应用的通知，请手动处理：设置 → 通知管理，把应用商店、游戏中心、音乐、视频等系统应用里“营销推荐/活动”类通知关闭；不认识的应用的权限一律关闭。</string>
 
     <string name="a11y_desc">检测到广告骚扰性质的快应用弹窗时自动回到桌面，保护老年用户不被诱导。从桌面、负一屏或快应用中心主动打开不受影响。本服务不读取屏幕内容，只根据窗口来源判断。</string>
 

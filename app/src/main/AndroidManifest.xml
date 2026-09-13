@@ -15,6 +15,8 @@
     <queries>
         <package android:name="com.miui.hybrid" />
         <package android:name="com.miui.hybrid.accessory" />
+        <package android:name="com.miui.systemAdSolution" />
+        <package android:name="com.miui.msa.global" />
         <package android:name="com.nearme.instant.platform" />
         <package android:name="com.oppo.hybrid" />
         <package android:name="com.oplus.hybrid" />
@@ -47,6 +49,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".CheckupActivity"
+            android:exported="false" />
 
         <receiver
             android:name=".admin.GuardAdminReceiver"
