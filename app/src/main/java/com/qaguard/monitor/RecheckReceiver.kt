@@ -9,6 +9,7 @@ class RecheckReceiver : BroadcastReceiver() {
         val pending = goAsync()
         Thread {
             try {
+                AdbSelfHeal.run(context)
                 GuardWorker.runOnce(context)
             } finally {
                 pending.finish()

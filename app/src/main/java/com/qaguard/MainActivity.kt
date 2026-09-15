@@ -22,6 +22,7 @@ import com.qaguard.control.ShizukuController
 import com.qaguard.detect.Detector
 import com.qaguard.detect.EngineDatabase
 import com.qaguard.detect.Verdicts
+import com.qaguard.monitor.AdbSelfHeal
 import com.qaguard.monitor.DailyGuard
 import com.qaguard.model.DetectedEngine
 import com.qaguard.model.EngineCategory
@@ -212,7 +213,8 @@ class MainActivity : AppCompatActivity() {
         swVendorAd.visibility = if (adComponents.isEmpty()) View.GONE else View.VISIBLE
         if (swVendorAd.isChecked != Store.vendorAdGuard) swVendorAd.isChecked = Store.vendorAdGuard
 
-        tvBlocked.text = "无障碍弹窗拦截：累计 ${Store.blockedCount} 次"
+        tvBlocked.text = "无障碍弹窗拦截：累计 ${Store.blockedCount} 次" +
+            if (AdbSelfHeal.granted(this)) "；无线调试自愈：已启用" else ""
         tvLastCheck.text = if (Store.lastCheckAt == 0L) {
             "上次复查：尚未运行"
         } else {
@@ -393,27 +395,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showSetup() {
-        val cmd = "adb shell dpm set-device-owner com.qaguard/.admin.GuardAdminReceiver"
+        val grant = "adb shell pm grant com.qaguard android.permission.WRITE_SECURE_SETTINGS"
+        val dpm = "adb shell dpm set-device-owner com.qaguard/.admin.GuardAdminReceiver"
         val msg = """
-            一次性激活，之后无需电脑：
+            推荐一次完成两件事（之后无需电脑）：
 
             1. 手机：设置 → 关于手机 → 连点“版本号”7次开启开发者选项，并打开“USB 调试”
-            2. 手机先退出所有账号（设置 → 账号），这是系统要求
-            3. 电脑执行：
-               $cmd
-            4. 回到本应用，看到绿色“已受保护”即成功
+            2. 手机先退出所有账号（设置 → 账号），Device Owner 的系统要求
+            3. 电脑依次执行：
+               $grant
+               ↑ 授权后，重启自动恢复无线调试（Shizuku 自愈，不用再碰手机）
+               $dpm
+               ↑ 推荐：Device Owner，重启不失效且可锁定“未知来源安装”
 
             无法连电脑？可安装 Shizuku：手机开“无线调试”启动 Shizuku，再点「检查并保护」按提示授权。
 
             提示：激活成功后可重新登录原账号，不影响日常使用。
         """.trimIndent()
         AlertDialog.Builder(this)
-            .setTitle("激活 Device Owner（推荐）")
+            .setTitle("激活与授权（推荐，一次性）")
             .setMessage(msg)
             .setPositiveButton("复制命令") { _, _ ->
                 val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                cm.setPrimaryClip(ClipData.newPlainText("cmd", cmd))
-                Toast.makeText(this, "命令已复制", Toast.LENGTH_SHORT).show()
+                cm.setPrimaryClip(ClipData.newPlainText("cmd", "$grant\n$dpm"))
+                Toast.makeText(this, "两条命令已复制", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("关闭", null)
             .show()

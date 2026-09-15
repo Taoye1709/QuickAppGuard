@@ -5,6 +5,12 @@
     <!-- 合规设计：故意不申请 INTERNET 权限——全部数据只留在本机，可被审计验证 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- v0.4 自愈（借鉴 Brevent）：经 adb pm grant 授权后，开机/复查时恢复无线调试，
+         让 Shizuku 通道重启后自愈。该权限为开发级权限，只能由机主经 adb 显式授予 -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
     <!-- 深度扫描用（检测第 3 级）：个人/家人侧载场景可接受；
          若未来上架商店必须删除本权限，检测器会自然降级到前两级 -->
     <uses-permission

@@ -77,9 +77,21 @@ class ShizukuController(private val context: Context) : EngineController {
         return service
     }
 
+    /** 通用 shell 执行（体检中心 appops 等复用）；错误经 ShellOutput 判定。 */
+    fun exec(command: String): kotlin.Result<String> = try {
+        val out = obtain().exec(command)
+        if (ShellOutput.isError(out)) {
+            kotlin.Result.failure(RuntimeException(out.trim().take(200)))
+        } else {
+            kotlin.Result.success(out)
+        }
+    } catch (t: Throwable) {
+        kotlin.Result.failure(t)
+    }
+
     override fun deactivate(pkg: String): kotlin.Result<Unit> {
-        val disable = shell("pm disable-user --user 0 $pkg")
-        if (disable.isSuccess) return disable
+        val disable = exec("pm disable-user --user 0 $pkg")
+        if (disable.isSuccess) return kotlin.Result.success(Unit)
         // 部分机型（如 HyperOS）把引擎标记为不可 disable；
         // 参考开源项目 FxxkMIUIAd 的实测结论，退级为 suspend 仍然有效
         return shell("pm suspend --user 0 $pkg")
@@ -87,9 +99,10 @@ class ShizukuController(private val context: Context) : EngineController {
 
     override fun restore(pkg: String): kotlin.Result<Unit> {
         // 两种停用状态都尝试还原，命令均幂等
-        val unsuspend = shell("pm unsuspend --user 0 $pkg")
-        val enable = shell("pm enable $pkg")
-        return if (enable.isSuccess) enable else unsuspend
+        val unsuspend = exec("pm unsuspend --user 0 $pkg")
+        val enable = exec("pm enable $pkg")
+        return if (enable.isSuccess) kotlin.Result.success(Unit)
+        else unsuspend.map { }
     }
 
     override fun isDeactivated(pkg: String): Boolean = try {
@@ -100,14 +113,5 @@ class ShizukuController(private val context: Context) : EngineController {
         false
     }
 
-    private fun shell(cmd: String): kotlin.Result<Unit> = try {
-        val out = obtain().exec(cmd)
-        if (ShellOutput.isError(out)) {
-            kotlin.Result.failure(RuntimeException(out.trim().take(200)))
-        } else {
-            kotlin.Result.success(Unit)
-        }
-    } catch (t: Throwable) {
-        kotlin.Result.failure(t)
-    }
+    private fun shell(cmd: String): kotlin.Result<Unit> = exec(cmd).map { }
 }

@@ -84,10 +84,15 @@
 
 1. 手机：设置 → 关于手机 → 连点"版本号"7 次开开发者选项 → 打开"USB 调试"；
 2. 手机退出所有账号（设置 → 账号）——系统对激活 Device Owner 的硬性要求；
-3. 电脑执行：
+3. 电脑依次执行两条命令（本应用"激活向导"里有一键复制）：
+
    ```bash
+   adb shell pm grant com.qaguard android.permission.WRITE_SECURE_SETTINGS
    adb shell dpm set-device-owner com.qaguard/.admin.GuardAdminReceiver
    ```
+
+   第一条授权后，开机与定时复查会自动恢复无线调试（只动无线、不动 USB 口），**Shizuku 通道重启后可自愈**；第二条激活 Device Owner，可锁定"未知来源安装"。
+
 4. 回到 App，状态变绿即成功。之后可重新登录原账号，日常使用不受影响。
 
 **路线 B：Shizuku（不便连电脑时）**
@@ -158,6 +163,14 @@ adb shell pm list packages | grep -iE 'hybrid|hap|quick'
   - 通知栏营销通知——系统不允许第三方代关，给出手动处理指引（通知管理里关掉商店/游戏中心等的"营销推荐"分类）。
 
 仍不进入范围的：第三方 App 内部广告（那是 GKD/SKIP 规则引擎的界面层领地，引进会破坏轻量性）、厂商统计/分析组件、任何联网上报。
+
+## v0.4：借鉴 Brevent——自愈与一键拒绝
+
+[Brevent](https://github.com/brevent/Brevent)（黑阈）是"阻止应用运行"赛道的标杆。逆向其 APK 提取可借鉴优点后落地（逆向分析见对话记录：签名者证书、dex 字符串池、`res/raw/brevent.sh` 引导脚本）：
+
+- **无线调试自愈**（最大价值）：`pm grant` 授权 `WRITE_SECURE_SETTINGS` 后，开机与定时复查自动恢复无线调试并移除闲置断开（借鉴其 `settings put global adb_wifi_enabled 1; adb_allowed_connection_time 0`），Shizuku 通道重启后自愈——解决"Shizuku 重启失效、老人不会重新启动"的短板。安全边界：只动无线调试，**绝不打开 USB adb**；连接仍受 ADB 密钥配对保护。
+- **体检中心一键拒绝悬浮窗**：Shizuku 可用时直接 `appops set <pkg> SYSTEM_ALERT_WINDOW deny`（借鉴其 appops 操作与备份回滚思路），恢复走 `default` 回到系统默认，不给 targeting 29+ 的应用意外授权。
+- **诚实记录未采纳项**：运行时击杀模型（需常驻服务器 + usagestats 监视，重量级；包级停用对快应用更彻底）、自实现 ADB TLS 配对协议（spake2 原生库，过重——Shizuku 依赖是正确取舍）、`settings put global adb_enabled 1`（打开 USB 口对老人设备是安全负担）。
 
 ## 对老人的实质影响（诚实论证）
 
