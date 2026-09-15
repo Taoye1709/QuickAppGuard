@@ -143,6 +143,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun refresh() {
         uiSyncing = true
+        try {
+            refreshInner()
+        } finally {
+            // 无论刷新中途出任何异常，都必须还原同步标志，
+            // 否则这批开关的监听器将永久沉默（静默失效比崩溃更难被发现）
+            uiSyncing = false
+        }
+    }
+
+    private fun refreshInner() {
         val engines = detector.scan()
         val adComponents = detector.scanAdComponents()
         val verdict = Verdicts.of(engines)
@@ -208,7 +218,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             "上次复查：${SimpleDateFormat("MM-dd HH:mm", Locale.CHINA).format(Date(Store.lastCheckAt))}"
         }
-        uiSyncing = false
     }
 
     /** 特征库里已确认被任一通道停用的引擎数（含扫描不到的隐藏包，让状态页给出真实保护规模）。 */
