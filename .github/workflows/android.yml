@@ -19,7 +19,10 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - uses: android-actions/setup-android@v3
+      # 说明：GitHub Actions 自带 Android SDK（ANDROID_HOME=/usr/local/lib/android/sdk）。
+      # 不再使用 android-actions/setup-android（其当前版本与新预装 sdkmanager 不兼容，
+      # 会在许可证接受交互处卡死）。本地缺的 build-tools/platform 由 Gradle 按 sdk 缓存自动补齐，
+      # AGP 在编译时按需安装。
 
       - name: Prepare release signing keystore
         env:
